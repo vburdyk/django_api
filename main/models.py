@@ -1,5 +1,7 @@
 from django.db import models
 from products.models import Product
+from django.core.validators import MinValueValidator, MaxValueValidator
+from django.core.exceptions import ValidationError
 
 
 class MenuItem(models.Model):
@@ -43,3 +45,13 @@ class OrderItems(models.Model):
 
     def __str__(self):
         return str(self.order.id) + " " + self.product.title
+
+
+class Coupon(models.Model):
+    code = models.CharField(max_length=50, unique=True)
+    expire_at = models.DateTimeField()
+    discount = models.IntegerField(validators=[MinValueValidator(0), MaxValueValidator(100)])
+    is_active = models.BooleanField(default=False)
+
+    def __str__(self):
+        return self.code

@@ -2,7 +2,7 @@ from django.shortcuts import render
 from django.http import HttpResponseRedirect
 from django.contrib.auth import login, authenticate, logout
 from django.contrib import messages
-from .models import Order, OrderItems
+from .models import Order, OrderItems, Coupon
 from .forms import NewUserForm
 from products.models import Product
 
@@ -31,21 +31,52 @@ def add_to_cart(request, product_id: int):
 
 
 def cart(request):
+    if request.method == "POST":
+        coupon_code = request.POST.get("coupon_code")
+        request.session["coupon_code"] = coupon_code
+        request.session.modified = True
+
+    try:
+        code = request.session.get("coupon_code")
+        discount = Coupon.objects.get(code=code)
+    except Coupon.DoesNotExist:
+        discount = None
+
     cart_products = []
-    for cart_item in request.session.get("cart", []):
-        product = Product.objects.get(id=cart_item["id"])
-        product.quantity = cart_item["quantity"]
-        product.total_price = cart_item["price"]
-        cart_products.append(product)
+    if not discount or not discount.is_active:
+        for cart_item in request.session.get("cart", []):
+            product = Product.objects.get(id=cart_item["id"])
+            product.quantity = cart_item["quantity"]
+            product.total_price = cart_item["price"]
+            cart_products.append(product)
+    else:
+        for cart_item in request.session.get("cart", []):
+            product = Product.objects.get(id=cart_item["id"])
+            product.quantity = cart_item["quantity"]
+            product.total_price = cart_item["price"] * (1 - (discount.discount / 100))
+            cart_products.append(product)
+
     return render(request, "cart.html", {"cart_products": cart_products})
 
 
 def checkout(request):
-    total_price = 0
-    for cart_item in request.session.get("cart", []):
-        total_price = total_price + cart_item["price"]
+    try:
+        code = request.session.get("coupon_code")
+        discount = Coupon.objects.get(code=code)
+    except:
+        discount = []
 
-    return render(request, "checkout.html", {"total_price": total_price})
+    if discount == [] or discount.is_active is False:
+        total_price = 0
+        for cart_item in request.session.get("cart", []):
+            total_price = total_price + cart_item["price"]
+        return render(request, "checkout.html", {"total_price": total_price})
+
+    if not discount.is_active:
+        total_price = 0
+        for cart_item in request.session.get("cart", []):
+            total_price = total_price + cart_item["price"] * (1 - (discount.discount / 100))
+        return render(request, "checkout.html", {"total_price": total_price})
 
 
 def checkout_proceed(request):

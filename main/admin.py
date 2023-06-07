@@ -1,14 +1,15 @@
 from django.contrib import admin
-from .models import MenuItem, SliderItem, OrderItems, Order
+from .models import MenuItem, SliderItem, OrderItems, Order, Coupon
 
 admin.site.register(MenuItem)
 admin.site.register(SliderItem)
+admin.site.register(Coupon)
 
 
 class OrderAdmin(admin.ModelAdmin):
     list_display = fields = ['id', 'first_name', "last_name", "address", "email"]
 
-    def queryset(self,request):
+    def queryset(self, request):
         qs = super(Order, self).queryset(request)
         return qs.all()
 
