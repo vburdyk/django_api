@@ -66,17 +66,17 @@ def checkout(request):
     except:
         discount = []
 
+    total_price = 0
+
     if discount == [] or discount.is_active is False:
-        total_price = 0
         for cart_item in request.session.get("cart", []):
             total_price = total_price + cart_item["price"]
-        return render(request, "checkout.html", {"total_price": total_price})
 
     if not discount.is_active:
-        total_price = 0
         for cart_item in request.session.get("cart", []):
             total_price = total_price + cart_item["price"] * (1 - (discount.discount / 100))
-        return render(request, "checkout.html", {"total_price": total_price})
+
+    return render(request, "checkout.html", {"total_price": total_price})
 
 
 def checkout_proceed(request):
