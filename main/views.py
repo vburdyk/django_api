@@ -2,9 +2,11 @@ from django.shortcuts import render
 from django.http import HttpResponseRedirect
 from django.contrib.auth import login, authenticate, logout
 from django.contrib import messages
+from .telegram_bot import post_order_on_telegram
 from .models import Order, OrderItems, Coupon
 from .forms import NewUserForm
 from products.models import Product
+import asyncio
 
 
 def main(request):
@@ -67,14 +69,14 @@ def checkout(request):
         discount = []
 
     total_price = 0
+    if discount:
+        if discount.is_active is False:
+            for cart_item in request.session.get("cart", []):
+                total_price = total_price + cart_item["price"]
 
-    if discount == [] or discount.is_active is False:
-        for cart_item in request.session.get("cart", []):
-            total_price = total_price + cart_item["price"]
-
-    if not discount.is_active:
-        for cart_item in request.session.get("cart", []):
-            total_price = total_price + cart_item["price"] * (1 - (discount.discount / 100))
+        if not discount.is_active:
+            for cart_item in request.session.get("cart", []):
+                total_price = total_price + cart_item["price"] * (1 - (discount.discount / 100))
 
     return render(request, "checkout.html", {"total_price": total_price})
 
@@ -102,6 +104,18 @@ def checkout_proceed(request):
             order_item.price = item["price"]
             order_item.quantity = item["quantity"]
             order_item.save()
+
+        order_message = ""
+        for item in request.session.get("cart", []):
+            product = Product.objects.get(id=item["id"])
+            product_name = product.title
+            product_quantity = item["quantity"]
+            product_price = item["price"]
+            item_message = f"{product_name}: \n  Quantity: {product_quantity} \n  Price: {product_price}$"
+            order_message += item_message
+
+        order_message = f"Client {order.first_name} {order.last_name}, ordered: \n{order.id}.Order items:\n {order_message}\n"
+        asyncio.run(post_order_on_telegram(order_message))
     return HttpResponseRedirect("/")
 
 
