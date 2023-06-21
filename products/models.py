@@ -2,7 +2,6 @@ from django.db import models
 from django.db.models import Q
 
 
-
 class Product(models.Model):
     title = models.CharField(max_length=255)
     description = models.TextField()
@@ -10,6 +9,7 @@ class Product(models.Model):
     discount_price = models.IntegerField(null=True, blank=True)
     show_on_main_page = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
+    no_of_likes = models.IntegerField(default=0)
 
     @property
     def main_image(self):
@@ -39,3 +39,11 @@ class Category(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class LikeProduct(models.Model):
+    product_id = models.CharField(max_length=100)
+    username = models.CharField(max_length=100)
+
+    def __str__(self):
+        return self.username

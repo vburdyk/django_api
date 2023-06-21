@@ -2,10 +2,10 @@ from django.shortcuts import render
 from django.http import HttpResponseRedirect
 from django.contrib.auth import login, authenticate, logout
 from django.contrib import messages
-from .telegram_bot import post_order_on_telegram
+from telegram_bot import post_order_on_telegram
 from .models import Order, OrderItems, Coupon
 from .forms import NewUserForm
-from products.models import Product
+from products.models import Product, LikeProduct
 import asyncio
 
 
@@ -117,6 +117,27 @@ def checkout_proceed(request):
         order_message = f"Client {order.first_name} {order.last_name}, ordered: \n{order.id}.Order items:\n {order_message}\n"
         asyncio.run(post_order_on_telegram(order_message))
     return HttpResponseRedirect("/")
+
+
+def like_product(request):
+    username = request.user.username
+    product_id = request.GET.get('product_id')
+
+    product = Product.objects.get(id=product_id)
+
+    like_filter = LikeProduct.objects.filter(product_id=product_id, username=username).first()
+
+    if like_filter is None:
+        new_like = LikeProduct.objects.create(product_id=product_id, username=username)
+        new_like.save()
+        product.no_of_likes = product.no_of_likes + 1
+        product.save()
+        return HttpResponseRedirect('/')
+    else:
+        like_filter.delete()
+        product.no_of_likes = product.no_of_likes - 1
+        product.save()
+        return HttpResponseRedirect('/')
 
 
 def register(request):
